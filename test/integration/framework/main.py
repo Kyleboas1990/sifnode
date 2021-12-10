@@ -1548,6 +1548,8 @@ def main(argv):
                 assert addr == expected_addr
             input("Press ENTER to exit...")
             killall((geth_proc,))
+    elif what == "run-peggy2-tests":
+        cmd.execst(["yarn", "test"], cwd=project.smart_contracts_dir)
     else:
         raise Exception("Missing/unknown command")
 

@@ -3,6 +3,8 @@ package keeper_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/mock"
+
 	"github.com/stretchr/testify/assert"
 
 	clptest "github.com/Sifchain/sifnode/x/clp/test"
@@ -17,12 +19,44 @@ func TestKeeper_Errors(t *testing.T) {
 	assert.NotNil(t, marginKeeper)
 }
 
+type MyMockedMTP struct {
+	mock.Mock
+}
+
+func TestKeeper_SetMTP_NoAsset(t *testing.T) {
+	ctx, app := test.CreateTestAppMargin(false)
+	marginKeeper := app.MarginKeeper
+	assert.NotNil(t, marginKeeper)
+	
+	mtp := new(MyMockedMTP)
+	
+	err := marginKeeper.SetMTP(ctx, mtp)
+	assert.EqualError(t, err, "no asset specified: mtp invalid")
+}
+
+func TestKeeper_SetMTP_NoAddress(t *testing.T) {
+	ctx, app := test.CreateTestAppMargin(false)
+	marginKeeper := app.MarginKeeper
+	assert.NotNil(t, marginKeeper)
+	
+	mtp := types.NewMTP()
+	mtp.CollateralAsset = "xxx"
+	
+	err := marginKeeper.SetMTP(ctx, &mtp)
+	assert.EqualError(t, err, "no address specified: mtp invalid")
+}
+
 func TestKeeper_SetMTP(t *testing.T) {
 	ctx, app := test.CreateTestAppMargin(false)
 	marginKeeper := app.MarginKeeper
 	assert.NotNil(t, marginKeeper)
-	var mtp types.MTP
-	marginKeeper.SetMTP(ctx, &mtp)
+	
+	mtp := types.NewMTP()
+	mtp.CollateralAsset = "xxx"
+	mtp.Address = "xxx"
+	
+	err := marginKeeper.SetMTP(ctx, &mtp)
+	assert.NoError(t, err)
 }
 
 func TestKeeper_GetMTP(t *testing.T) {
@@ -98,21 +132,85 @@ func TestKeeper_CustodySwap(t *testing.T) {
 }
 
 func TestKeeper_Borrow(t *testing.T) {
-	t.Skip("add operator when adding up value to collateralamount throws sigsegv error")
 	pool := clptest.GenerateRandomPool(1)[0]
 	ctx, app := test.CreateTestAppMargin(false)
 	marginKeeper := app.MarginKeeper
 	assert.NotNil(t, marginKeeper)
 	mtp := types.NewMTP()
+
+	// FIX: uninitiated fields (throws SIGSEGV error otherwise)
+	mtp.CollateralAmount = sdk.NewUint(0)
+	mtp.LiabilitiesP = sdk.NewUint(0)
+	mtp.LiabilitiesI = sdk.NewUint(0)
+	mtp.CustodyAmount = sdk.NewUint(0)
+	// FIX
+
 	err := marginKeeper.Borrow(ctx, "xxx", sdk.NewUint(10000), sdk.NewUint(1000), mtp, pool, sdk.NewUint(1))
 	assert.Error(t, err)
 }
 
 func TestKeeper_UpdatePoolHealth(t *testing.T) {
 	pool := clptest.GenerateRandomPool(1)[0]
+
+	// FIX: uninitiated fields (throws SIGSEGV error otherwise)
+	pool.ExternalLiabilities = sdk.NewUint(0)
+	pool.NativeLiabilities = sdk.NewUint(0)
+	// FIX
+
 	ctx, app := test.CreateTestAppMargin(false)
 	marginKeeper := app.MarginKeeper
 	assert.NotNil(t, marginKeeper)
 	err := marginKeeper.UpdatePoolHealth(ctx, pool)
+	assert.Nil(t, err)
+}
+
+func TestKeeper_UpdateMTPHealth(t *testing.T) {
+	pool := clptest.GenerateRandomPool(1)[0]
+
+	// FIX: uninitiated fields (throws SIGSEGV error otherwise)
+	pool.ExternalLiabilities = sdk.NewUint(0)
+	pool.NativeLiabilities = sdk.NewUint(0)
+	// FIX
+
+	mtp := types.NewMTP()
+
+	// FIX: uninitiated fields (throws SIGSEGV error otherwise)
+	mtp.CollateralAmount = sdk.NewUint(0)
+	mtp.LiabilitiesP = sdk.NewUint(0)
+	mtp.LiabilitiesI = sdk.NewUint(0)
+	mtp.CustodyAmount = sdk.NewUint(0)
+	// FIX
+
+	ctx, app := test.CreateTestAppMargin(false)
+	marginKeeper := app.MarginKeeper
+	assert.NotNil(t, marginKeeper)
+
+	_, err := marginKeeper.UpdateMTPHealth(ctx, mtp, pool)
+	assert.Error(t, err)
+}
+
+func TestKeeper_TestInCustody(t *testing.T) {
+	pool := clptest.GenerateRandomPool(1)[0]
+
+	// FIX: uninitiated fields (throws SIGSEGV error otherwise)
+	pool.ExternalLiabilities = sdk.NewUint(0)
+	pool.NativeLiabilities = sdk.NewUint(0)
+	pool.NativeCustody = sdk.NewUint(0)
+	// FIX
+
+	mtp := types.NewMTP()
+
+	// FIX: uninitiated fields (throws SIGSEGV error otherwise)
+	mtp.CollateralAmount = sdk.NewUint(0)
+	mtp.LiabilitiesP = sdk.NewUint(0)
+	mtp.LiabilitiesI = sdk.NewUint(0)
+	mtp.CustodyAmount = sdk.NewUint(0)
+	// FIX
+
+	ctx, app := test.CreateTestAppMargin(false)
+	marginKeeper := app.MarginKeeper
+	assert.NotNil(t, marginKeeper)
+
+	err := marginKeeper.TakeInCustody(ctx, mtp, pool)
 	assert.Nil(t, err)
 }

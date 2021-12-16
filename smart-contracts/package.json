@@ -93,7 +93,7 @@
     "blocklist:test": "USE_FORKING=1 npx hardhat run scripts/sync_ofac_blocklist.js --network hardhat"
   },
   "dependencies": {
-    "concurrently": "^6.2.0",
+    "concurrently": "^6.4.0",
     "truffle": "^5.4.7"
   }
 }
